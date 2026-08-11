@@ -31,3 +31,14 @@ app.add_middleware(
 
 # Exposes GET /metrics in Prometheus text format (request counts, latency histograms, etc.)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+
+@app.get("/health", response_model=HealthOut, tags=["ops"])
+def health():
+    """Liveness/readiness probe target for ALB / ECS / Kubernetes."""
+    return {"status": "ok", "version": APP_VERSION}
+
+
+@app.get("/voices", response_model=list[VoiceOut], tags=["tts"])
+def get_voices():
+    return tts_service.list_voices()
