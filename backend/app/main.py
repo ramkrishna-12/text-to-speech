@@ -42,3 +42,20 @@ def health():
 @app.get("/voices", response_model=list[VoiceOut], tags=["tts"])
 def get_voices():
     return tts_service.list_voices()
+
+
+@app.post("/convert", response_model=ConvertResponse, tags=["tts"])
+def convert(payload: ConvertRequest):
+    try:
+        filename, _ = tts_service.synthesize(payload.text, payload.voice_id)
+    except tts_service.UnknownVoiceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except tts_service.TTSGenerationError as exc:
+        raise HTTPException(status_code=502, detail=f"TTS generation failed: {exc}")
+
+    audio_id = Path(filename).stem
+    return ConvertResponse(
+        audio_id=audio_id,
+        download_url=f"/audio/{audio_id}?download=true",
+        preview_url=f"/audio/{audio_id}",
+    )
