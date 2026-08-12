@@ -59,3 +59,22 @@ def convert(payload: ConvertRequest):
         download_url=f"/audio/{audio_id}?download=true",
         preview_url=f"/audio/{audio_id}",
     )
+
+
+@app.get("/audio/{audio_id}", tags=["tts"])
+def get_audio(audio_id: str, download: bool = Query(default=False)):
+    # audio_id must be a bare uuid4 hex - reject anything else to prevent path traversal
+    if not audio_id.isalnum():
+        raise HTTPException(status_code=400, detail="Invalid audio id")
+
+    filepath = (AUDIO_DIR / f"{audio_id}.mp3").resolve()
+    if AUDIO_DIR.resolve() not in filepath.parents or not filepath.exists():
+        raise HTTPException(status_code=404, detail="Audio not found")
+
+    delete_after_send = BackgroundTask(_cleanup, filepath) if download else None
+    return FileResponse(
+        path=filepath,
+        media_type="audio/mpeg",
+        filename=f"{audio_id}.mp3" if download else None,
+        background=delete_after_send,
+    )
