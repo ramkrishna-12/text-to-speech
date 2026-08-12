@@ -78,7 +78,8 @@ def get_audio(audio_id: str, download: bool = Query(default=False)):
         filename=f"{audio_id}.mp3" if download else None,
         background=delete_after_send,
     )
-    
+
+
 def _cleanup(path: Path):
     try:
         path.unlink(missing_ok=True)
