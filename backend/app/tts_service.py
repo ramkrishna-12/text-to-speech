@@ -22,3 +22,21 @@ class Voice:
     lang: str
     tld: str
     slow: bool = False
+
+
+# Curated voice presets (id -> Voice). Extend freely; gtts.lang.tts_langs() has 100+ langs.
+VOICES: dict[str, Voice] = {
+    "en-us": Voice("en-us", "English (US)", "en", "com"),
+    "en-uk": Voice("en-uk", "English (UK)", "en", "co.uk"),
+    "en-au": Voice("en-au", "English (Australia)", "en", "com.au"),
+    "en-in": Voice("en-in", "English (India)", "en", "co.in"),
+    "en-us-slow": Voice("en-us-slow", "English (US, Slow)", "en", "com", slow=True),
+    "hi-in": Voice("hi-in", "Hindi (India)", "hi", "co.in"),
+    "bn-in": Voice("bn-in", "Bengali (India)", "bn", "co.in"),
+    "es-es": Voice("es-es", "Spanish (Spain)", "es", "es"),
+    "es-mx": Voice("es-mx", "Spanish (Mexico)", "es", "com.mx"),
+    "fr-fr": Voice("fr-fr", "French (France)", "fr", "fr"),
+    "de-de": Voice("de-de", "German (Germany)", "de", "de"),
+    "ja-jp": Voice("ja-jp", "Japanese (Japan)", "ja", "co.jp"),
+    "zh-cn": Voice("zh-cn", "Chinese Mandarin (China)", "zh-CN", "com"),
+}
