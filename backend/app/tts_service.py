@@ -13,3 +13,12 @@ from gtts.lang import tts_langs
 from app.config import AUDIO_DIR
 
 logger = logging.getLogger("tts_service")
+
+
+@dataclass(frozen=True)
+class Voice:
+    id: str
+    label: str
+    lang: str
+    tld: str
+    slow: bool = False
