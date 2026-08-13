@@ -40,3 +40,19 @@ VOICES: dict[str, Voice] = {
     "ja-jp": Voice("ja-jp", "Japanese (Japan)", "ja", "co.jp"),
     "zh-cn": Voice("zh-cn", "Chinese Mandarin (China)", "zh-CN", "com"),
 }
+
+
+class UnknownVoiceError(ValueError):
+    pass
+
+
+class TTSGenerationError(RuntimeError):
+    pass
+
+
+def list_voices() -> list[dict]:
+    return [
+        {"id": v.id, "label": v.label, "lang": v.lang, "tld": v.tld, "slow": v.slow}
+        for v in VOICES.values()
+    ]
+
