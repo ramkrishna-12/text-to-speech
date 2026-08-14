@@ -56,3 +56,30 @@ def list_voices() -> list[dict]:
         for v in VOICES.values()
     ]
 
+
+def list_supported_languages() -> dict:
+    """Full raw language table from gTTS, exposed for advanced/custom use."""
+    return tts_langs()
+
+
+def synthesize(text: str, voice_id: str) -> tuple[str, "Path"]:
+    """
+    Generate an mp3 for `text` using the given voice preset.
+    Returns (filename, absolute_path).
+    Raises UnknownVoiceError / TTSGenerationError.
+    """
+    voice = VOICES.get(voice_id)
+    if voice is None:
+        raise UnknownVoiceError(f"Unknown voice id: {voice_id}")
+
+    filename = f"{uuid.uuid4().hex}.mp3"
+    filepath = AUDIO_DIR / filename
+
+    try:
+        tts = gTTS(text=text, lang=voice.lang, tld=voice.tld, slow=voice.slow)
+        tts.save(str(filepath))
+    except Exception as exc:  # gTTS raises several exception types (network, value, assertion)
+        logger.exception("gTTS synthesis failed")
+        raise TTSGenerationError(str(exc)) from exc
+
+    return filename, filepath
