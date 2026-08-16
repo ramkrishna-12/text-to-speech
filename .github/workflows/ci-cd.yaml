@@ -1,0 +1,64 @@
+name: CI/CD - Build, Push, Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/ci-cd.yaml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write   # required for OIDC -> AWS role assumption (no static keys)
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: tts-app-backend
+  ECS_CLUSTER: tts-app-cluster
+  ECS_SERVICE: tts-app-service
+  ECS_TASK_FAMILY: tts-app-backend
+  CONTAINER_NAME: backend
+  IMAGE_RETENTION_COUNT: 5
+
+jobs:
+  # ---------------------------------------------------------------
+  # BUILD STAGE: unit/integration tests, then build (but don't push yet)
+  # ---------------------------------------------------------------
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx
+
+      - name: Run unit + integration tests
+        working-directory: backend
+        run: pytest tests/ -v --junitxml=test-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: backend/test-results.xml
+
+      - name: Build image (validation only, not pushed)
+        working-directory: backend
+        run: docker build -t tts-app-backend:ci-check .
