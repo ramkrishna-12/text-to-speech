@@ -62,3 +62,67 @@ jobs:
       - name: Build image (validation only, not pushed)
         working-directory: backend
         run: docker build -t tts-app-backend:ci-check .
+
+  # ---------------------------------------------------------------
+  # PUSH STAGE: build for real, tag with git SHA + latest, push to ECR,
+  # then prune everything except the newest N images
+  # ---------------------------------------------------------------
+  push:
+    name: Push to ECR
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: vars
+        run: echo "image_tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials (OIDC - no static keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        working-directory: backend
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ steps.vars.outputs.image_tag }}
+        run: |
+          docker build -t "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+                        -t "$REGISTRY/$ECR_REPOSITORY:latest" .
+          docker push "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$REGISTRY/$ECR_REPOSITORY:latest"
+
+      - name: Prune ECR - keep only the newest N images
+        env:
+          RETAIN: ${{ env.IMAGE_RETENTION_COUNT }}
+        run: |
+          # Belt-and-suspenders alongside the Terraform lifecycle policy: list images
+          # newest-first, skip the first $RETAIN, delete the rest by digest.
+          IMAGE_IDS=$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --query 'sort_by(imageDetails,& imagePushedAt)[*].imageDigest' \
+            --output text)
+
+          TOTAL=$(echo "$IMAGE_IDS" | wc -w)
+          EXCESS=$((TOTAL - RETAIN))
+
+          if [ "$EXCESS" -gt 0 ]; then
+            OLD_DIGESTS=$(echo "$IMAGE_IDS" | tr '\t' '\n' | head -n "$EXCESS")
+            for digest in $OLD_DIGESTS; do
+              echo "Deleting old image: $digest"
+              aws ecr batch-delete-image \
+                --repository-name "$ECR_REPOSITORY" \
+                --image-ids imageDigest="$digest"
+            done
+          else
+            echo "Only $TOTAL image(s) present, nothing to prune (retention: $RETAIN)."
+          fi
