@@ -126,3 +126,41 @@ jobs:
           else
             echo "Only $TOTAL image(s) present, nothing to prune (retention: $RETAIN)."
           fi
+
+  # ---------------------------------------------------------------
+  # DEPLOY STAGE: register a new task def revision pointing at the new
+  # image, update the ECS service, wait for it to stabilize
+  # ---------------------------------------------------------------
+  deploy:
+    name: Deploy to ECS
+    needs: push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_TASK_FAMILY" \
+            --query taskDefinition > task-definition.json
+
+      - name: Render new image into task definition
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ needs.push.outputs.image_tag && format('{0}:{1}', secrets.ECR_REGISTRY, needs.push.outputs.image_tag) }}
+
+      - name: Deploy new task definition to ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
