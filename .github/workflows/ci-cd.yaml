@@ -164,3 +164,29 @@ jobs:
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+
+  # ---------------------------------------------------------------
+  # TESTING STAGE: smoke test the freshly deployed service
+  # ---------------------------------------------------------------
+  smoke-test:
+    name: Post-deploy smoke test
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit /health on the live ALB
+        run: |
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.APP_URL }}/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed."
+              exit 0
+            fi
+            echo "Attempt $i: got $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after deploy."
+          exit 1
+
+      - name: Verify /voices responds
+        run: |
+          curl -sf "${{ secrets.APP_URL }}/voices" | grep -q "en-us"
