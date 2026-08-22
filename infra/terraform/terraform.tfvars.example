@@ -1,0 +1,7 @@
+aws_region                = "ap-south-1"
+environment                = "dev"
+project_name               = "tts-app"
+desired_count               = 2
+min_capacity                = 2
+max_capacity                = 6
+ecr_retained_image_count    = 5
