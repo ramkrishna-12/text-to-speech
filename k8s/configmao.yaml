@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tts-backend-config
+  namespace: tts-app
+data:
+  AUDIO_DIR: "/tmp/audio"
+  ALLOWED_ORIGINS: "*"
+  MAX_TEXT_LENGTH: "5000"
