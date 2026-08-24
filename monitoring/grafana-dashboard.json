@@ -1,0 +1,94 @@
+{
+  "title": "TTS App - Service Health",
+  "uid": "tts-app-health",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"tts-backend-k8s\"}[5m]))",
+          "legendFormat": "requests/sec"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "p95 Request Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"tts-backend-k8s\"}[5m])) by (le))",
+          "legendFormat": "p95 latency (s)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "5xx Error Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"tts-backend-k8s\", status=~\"5..\"}[5m]))",
+          "legendFormat": "5xx/sec"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "ECS Service CPU Utilization",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "aws_ecs_cpuutilization_average{job=\"cloudwatch-exporter\"}",
+          "legendFormat": "CPU %"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "ECS Service Memory Utilization",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "aws_ecs_memoryutilization_average{job=\"cloudwatch-exporter\"}",
+          "legendFormat": "Memory %"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "ALB Healthy Host Count",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "aws_applicationelb_healthy_host_count_minimum{job=\"cloudwatch-exporter\"}",
+          "legendFormat": "Healthy targets"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Pod Restarts (last 1h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "increase(kube_pod_container_status_restarts_total{namespace=\"tts-app\"}[1h])",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    }
+  ]
+}
