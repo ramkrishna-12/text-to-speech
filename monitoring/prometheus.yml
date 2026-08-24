@@ -1,0 +1,39 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # --- Kubernetes deployment: relies on prometheus.io/* pod annotations set in deployment.yaml ---
+  - job_name: "tts-backend-k8s"
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: ["tts-app"]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+
+  # --- ECS deployment: Prometheus needs network line-of-sight to task private IPs.
+  # In practice, run the ECS Service Discovery integration (via CloudMap) or the
+  # AWS Distro for OpenTelemetry (ADOT) Prometheus exporter side-container, and
+  # point this job at the discovered targets file: ---
+  - job_name: "tts-backend-ecs"
+    file_sd_configs:
+      - files: ["/etc/prometheus/ecs_targets/*.json"]
+        refresh_interval: 30s
+    metrics_path: /metrics
+
+  # --- CloudWatch metrics bridge (ECS/ALB/NAT infra metrics Prometheus can't scrape directly) ---
+  - job_name: "cloudwatch-exporter"
+    static_configs:
+      - targets: ["cloudwatch-exporter:9106"]
