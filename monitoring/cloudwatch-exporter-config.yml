@@ -1,0 +1,33 @@
+# Config for prometheus/cloudwatch_exporter - run as a sidecar/standalone service
+# so Grafana can chart ECS service + ALB metrics alongside the app's own /metrics.
+region: ap-south-1
+metrics:
+  - aws_namespace: AWS/ECS
+    aws_metric_name: CPUUtilization
+    aws_dimensions: [ClusterName, ServiceName]
+    aws_statistics: [Average, Maximum]
+
+  - aws_namespace: AWS/ECS
+    aws_metric_name: MemoryUtilization
+    aws_dimensions: [ClusterName, ServiceName]
+    aws_statistics: [Average, Maximum]
+
+  - aws_namespace: AWS/ApplicationELB
+    aws_metric_name: TargetResponseTime
+    aws_dimensions: [LoadBalancer, TargetGroup]
+    aws_statistics: [Average, p99]
+
+  - aws_namespace: AWS/ApplicationELB
+    aws_metric_name: RequestCount
+    aws_dimensions: [LoadBalancer]
+    aws_statistics: [Sum]
+
+  - aws_namespace: AWS/ApplicationELB
+    aws_metric_name: HTTPCode_Target_5XX_Count
+    aws_dimensions: [LoadBalancer]
+    aws_statistics: [Sum]
+
+  - aws_namespace: AWS/ApplicationELB
+    aws_metric_name: HealthyHostCount
+    aws_dimensions: [LoadBalancer, TargetGroup]
+    aws_statistics: [Minimum]
